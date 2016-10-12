@@ -3,63 +3,61 @@
 - hosts: localhost
   tasks:
   - name: "List all Floating IP"
-    digital_ocean_floating_ip_facts:
+    do_floating_ip_facts:
       oauth_token: "{{ digitalocean_oauth_token }}"
     register: result
 
-  - debug: var=result
-
   - name: "Destroy Floating IP"
-    digital_ocean_floating_ip:
+    do_floating_ip:
       state: absent
       ip: "8.8.8.8"
       oauth_token: "{{ digitalocean_oauth_token }}"
 
   - name: "Create a Floating IP 1"
-    digital_ocean_floating_ip:
+    do_floating_ip:
       state: present
       region: "lon1"
       oauth_token: "{{ digitalocean_oauth_token }}"
     register: result1
 
   - name: "Create a Floating IP 2"
-    digital_ocean_floating_ip:
+    do_floating_ip:
       state: present
       region: "lon1"
       oauth_token: "{{ digitalocean_oauth_token }}"
     register: result2
 
   # - name: "Associate The Floating IP 1.2.3.4 to a Droplet ID test-fip"
-  #   digital_ocean_floating_ip:
+  #   do_floating_ip:
   #     state: present
   #     ip: "1.2.3.4"
   #     droplet_id: "65425424"
   #     oauth_token: "{{ digitalocean_oauth_token }}"
   #
   # - name: "Associate The Floating IP 1.2.3.4 to a Droplet ID test-fip"
-  #   digital_ocean_floating_ip:
+  #   do_floating_ip:
   #     state: present
   #     ip: "46.101.66.239"
   #     droplet_id: "28199416"
   #     oauth_token: "{{ digitalocean_oauth_token }}"
 
-  - name: "Associate The Floating IP 2 to a Droplet ID test-fip"
-    digital_ocean_floating_ip:
-      state: present
-      ip: "{{ result2.public_ip }}"
-      droplet_id: "28199416"
-      oauth_token: "{{ digitalocean_oauth_token }}"
+  # - name: "Associate The Floating IP 2 to a Droplet ID test-fip"
+  #   do_floating_ip:
+  #     state: present
+  #     ip: "{{ result2.data.floating_ip.ip }}"
+  #     droplet_id: "28199416"
+  #     oauth_token: "{{ digitalocean_oauth_token }}"
 
   - name: "Destroy Floating IP 1"
-    digital_ocean_floating_ip:
+    do_floating_ip:
       state: absent
-      ip: "{{ result1.public_ip }}"
+      ip: "{{ result1.data.floating_ip.ip }}"
       region: "lon1"
       oauth_token: "{{ digitalocean_oauth_token }}"
 
   - name: "Destroy Floating IP 2"
-    digital_ocean_floating_ip:
+    do_floating_ip:
       state: absent
-      ip: "{{ result2.public_ip }}"
+      ip: "{{ result2.data.floating_ip.ip }}"
       region: "lon1"
       oauth_token: "{{ digitalocean_oauth_token }}"
