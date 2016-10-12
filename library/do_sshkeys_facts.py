@@ -20,9 +20,9 @@
 DOCUMENTATION = '''
 ---
 module: do_sshkeys_facts
-short_description: Manage DigitalOcean Floating IPs
+short_description: DigitalOcean SSH keys facts
 description:
-     - Create/delete/assign a floating IP.
+     - Fetch DigitalOcean SSH keys facts.
 version_added: "2.3"
 author: "Patrick Marques (@patrickfmarques)"
 options:
@@ -44,9 +44,9 @@ requirements:
 
 
 EXAMPLES = '''
-- name: "Create a Floating IP in regigin lon1"
+- name: "List all sshkeys"
   do_sshkeys_facts:
-    state: present
+    register: result
 '''
 
 

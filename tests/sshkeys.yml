@@ -23,9 +23,6 @@
       state: "absent"
       fingerprint: "{{ result.data.ssh_key.fingerprint }}"
       oauth_token: "{{ digitalocean_oauth_token }}"
-    register: result
-
-  - debug: var=result
 
   - name: "List all sshkeys"
     do_sshkeys_facts:

@@ -20,9 +20,9 @@
 DOCUMENTATION = '''
 ---
 module: do_floating_ip_facts
-short_description: Manage DigitalOcean Floating IPs
+short_description: DigitalOcean Floating IPs facts
 description:
-     - Create/delete/assign a floating IP.
+     - Fetch DigitalOcean Floating IPs facts.
 version_added: "2.3"
 author: "Patrick Marques (@patrickfmarques)"
 options:
@@ -41,7 +41,7 @@ requirements:
 EXAMPLES = '''
 - name: "Create a Floating IP in regigin lon1"
   do_floating_ip_facts:
-    state: present
+    register: result
 '''
 
 
