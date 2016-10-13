@@ -161,14 +161,14 @@ def core(module):
                          'Content-type': 'application/json'})
 
     # TODO: recursive fetch!
-    response = rest.get("floating_ips?page=1&per_page=20")
+    response = rest.get('floating_ips?page=1&per_page=20')
     status_code = response.status_code
     json = response.json
     if status_code == 200:
         module.exit_json(changed=False, data=json)
     else:
-        module.fail_json(msg="Error fecthing facts [{}: {}]".format(
-            status_code, response.json["message"]))
+        module.fail_json(msg='Error fecthing facts [{}: {}]'.format(
+            status_code, response.json['message']))
 
 
 def main():

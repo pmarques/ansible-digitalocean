@@ -150,8 +150,8 @@ def core(module):
     if status_code == 200:
         module.exit_json(changed=False, data=json)
     else:
-        module.fail_json(msg="Error fecthing facts [{}: {}]".format(
-            status_code, response.json["message"]))
+        module.fail_json(msg='Error fecthing facts [{}: {}]'.format(
+            status_code, response.json['message']))
 
 
 def main():
