@@ -164,6 +164,7 @@ def main():
                 required=True,
             ),
         ),
+        supports_check_mode=True,
     )
 
     core(module)

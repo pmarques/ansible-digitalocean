@@ -170,6 +170,10 @@ def core(module):
     if state in ('present'):
         if status_code == 404:
             # IF key not found create it!
+
+            if module.check_mode:
+                module.exit_json(changed=True)
+
             payload = {
                 'name': name,
                 'public_key': ssh_pub_key
@@ -188,6 +192,9 @@ def core(module):
             if json['ssh_key']['name'] == name:
                 module.exit_json(changed=False, data=json)
 
+            if module.check_mode:
+                module.exit_json(changed=True)
+
             payload = {
                 'name': name,
             }
@@ -203,6 +210,9 @@ def core(module):
     elif state in ('absent'):
         if status_code == 404:
             module.exit_json(changed=False)
+
+        if module.check_mode:
+            module.exit_json(changed=True)
 
         response = rest.delete('account/keys/{}'.format(fingerprint))
         status_code = response.status_code
@@ -243,6 +253,7 @@ def main():
         # mutually_exclusive = (
         #     ['region', 'droplet_id']
         # ),
+        supports_check_mode=True,
     )
 
     core(module)
