@@ -160,7 +160,7 @@ def main():
             oauth_token = dict(
                 no_log=True,
                 # Support environment variable for DigitalOcean OAuth Token
-                fallback=(env_fallback, ['DO_OAUTH_TOKEN']),
+                fallback=(env_fallback, ['DO_OAUTH_TOKEN', 'DO_API_TOKEN', 'DO_API_KEY']),
                 required=True,
             ),
         ),
