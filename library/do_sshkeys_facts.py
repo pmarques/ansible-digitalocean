@@ -24,7 +24,7 @@ short_description: DigitalOcean SSH keys facts
 description:
      - Fetch DigitalOcean SSH keys facts.
 version_added: "2.3"
-author: "Patrick Marques (@patrickfmarques)"
+author: "Patrick Marques (@pmarques)"
 options:
   state:
     description:

@@ -24,7 +24,7 @@ short_description: Manage DigitalOcean SSH keys
 description:
      - Create/delete DigitalOcean SSH keys.
 version_added: "2.3"
-author: "Patrick Marques (@patrickfmarques)"
+author: "Patrick Marques (@pmarques)"
 options:
   state:
     description:
