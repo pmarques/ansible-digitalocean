@@ -253,9 +253,10 @@ def main():
         required_one_of = (
             ('fingerprint', 'ssh_pub_key'),
         ),
-        required_if = ([
-            ('state', 'delete', ['ip']),
-        ]),
+        # required_if = ([
+        #     ('state', 'absent', ['fingerprint']),
+        #     ('state', 'present', ['ssh_pub_key']),
+        # ]),
         # required_together = (),
         # mutually_exclusive = (
         #     ['region', 'droplet_id']
