@@ -158,57 +158,60 @@ def core(module):
     rest = Rest(module, {'Authorization': 'Bearer {}'.format(api_token),
                          'Content-type': 'application/json'})
 
-    if state in ('present'):
-        payload = {
-            'name': name,
-            'public_key': ssh_pub_key
-        }
-        # if name is not None:
-        #     payload['name'] = name
+    fingerprint = fingerprint or ssh_key_fingerprint(ssh_pub_key)
+    response = rest.get('account/keys/{}'.format(fingerprint))
+    status_code = response.status_code
+    json = response.json
 
-        response = rest.post('account/keys', data=payload)
-        status_code = response.status_code
-        json = response.json
-        if status_code == 201:
-            module.exit_json(changed=True, data=json)
-        elif status_code == 422:
-            fingerprint = ssh_key_fingerprint(ssh_pub_key)
-            response = rest.get('account/keys/{}'.format(fingerprint))
+    if status_code not in (200, 404):
+        module.fail_json(msg='Error getting ssh key [{}: {}]'.format(
+            status_code, response.json['message']), fingerprint=fingerprint)
+
+    if state in ('present'):
+        if status_code == 404:
+            # IF key not found create it!
+            payload = {
+                'name': name,
+                'public_key': ssh_pub_key
+            }
+            response = rest.post('account/keys', data=payload)
             status_code = response.status_code
             json = response.json
-            if status_code == 200:
-                if json['ssh_key']['name'] == name:
-                    module.exit_json(changed=False, data=json)
-                payload = {
-                    'name': name,
-                }
-                response = rest.put('account/keys/{}'.format(fingerprint), data=payload)
-                status_code = response.status_code
-                json = response.json
-                if status_code == 200:
-                    module.exit_json(changed=True, data=json, status_code=status_code)
-                else:
-                    module.fail_json(msg='Error updating ssh key name [{}: {}]'.format(
-                        status_code, response.json['message']), fingerprint=fingerprint)
-            else:
-                module.fail_json(msg='Error getting ssh key [{}: {}]'.format(
-                    status_code, response.json['message']), fingerprint=fingerprint)
-        else:
+            if status_code == 201:
+                module.exit_json(changed=True, data=json)
+
             module.fail_json(msg='Error creating ssh key [{}: {}]'.format(
                 status_code, response.json['message']))
 
+        elif status_code == 200:
+            # If key found was found, check if name needs to be updated
+            if json['ssh_key']['name'] == name:
+                module.exit_json(changed=False, data=json)
+
+            payload = {
+                'name': name,
+            }
+            response = rest.put('account/keys/{}'.format(fingerprint), data=payload)
+            status_code = response.status_code
+            json = response.json
+            if status_code == 200:
+                module.exit_json(changed=True, data=json)
+
+            module.fail_json(msg='Error updating ssh key name [{}: {}]'.format(
+                status_code, response.json['message']), fingerprint=fingerprint)
+
     elif state in ('absent'):
+        if status_code == 404:
+            module.exit_json(changed=False)
+
         response = rest.delete('account/keys/{}'.format(fingerprint))
         status_code = response.status_code
         json = response.json
         if status_code == 204:
             module.exit_json(changed=True)
-        elif status_code == 404:
-            module.exit_json(changed=False)
-        else:
-            module.fail_json(msg='Error creating ssh key [{}: {}]'.format(
-                status_code, response.json['message']))
 
+        module.fail_json(msg='Error creating ssh key [{}: {}]'.format(
+            status_code, response.json['message']))
 
 def ssh_key_fingerprint(ssh_pub_key):
     key = ssh_pub_key.split(None, 2)[1]
@@ -230,10 +233,11 @@ def main():
                 required=True,
             ),
         ),
-        # required_one_of = (
-        # ),
+        required_one_of = (
+            ('fingerprint', 'ssh_pub_key'),
+        ),
         required_if = ([
-            ('state','delete',['ip'])
+            ('state', 'delete', ['ip']),
         ]),
         # required_together = (),
         # mutually_exclusive = (
