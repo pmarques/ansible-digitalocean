@@ -61,24 +61,31 @@ requirements:
 EXAMPLES = '''
 - name: "Create ssh key"
   do_sshkeys:
-    name: "johndoe"
-    ssh_pub_key: "ssh-rsa AAAAB3Nza(.....)VTw=="
+    name: "My SSH Public Key"
+    public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAQQDDHr/jh2Jy4yALcK4JyWbVkPRaWmhck3IgCoeOO3z1e2dBowLh64QAM+Qb72pxekALga2oi4GvT+TlWNhzPH4V example"
   register: result
 
 - name: "Delete ssh key"
   do_sshkeys:
     state: "absent"
-    fingerprint: "64:09:d6:26:c9:f2:ab:28:bb:81:b1:d9:61:6b:88:80"
+    fingerprint: "3b:16:bf:e4:8b:00:8b:b8:59:8c:a9:d3:f0:19:45:fa"
 '''
 
 
 RETURN = '''
 # Digital Ocean API info https://developers.digitalocean.com/documentation/v2/#list-all-keys
 data:
-    description: a DigitalOcean SSH Keys resource manager
-    returned: success and no resource constraint
+    description: This is only present when C(state=present)
+    returned: when C(state=present)
     type: dict
-    sample:
+    sample: {
+        "ssh_key": {
+            "id": 512189,
+            "fingerprint": "3b:16:bf:e4:8b:00:8b:b8:59:8c:a9:d3:f0:19:45:fa",
+            "name": "My SSH Public Key",
+            "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAQQDDHr/jh2Jy4yALcK4JyWbVkPRaWmhck3IgCoeOO3z1e2dBowLh64QAM+Qb72pxekALga2oi4GvT+TlWNhzPH4V example"
+        }
+    }
 '''
 
 import json
