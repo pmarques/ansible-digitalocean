@@ -177,10 +177,22 @@ def core(module):
             status_code = response.status_code
             json = response.json
             if status_code == 200:
-                module.exit_json(changed=False, data=json)
+                if json['ssh_key']['name'] == name:
+                    module.exit_json(changed=False, data=json)
+                payload = {
+                    'name': name,
+                }
+                response = rest.put('account/keys/{}'.format(fingerprint), data=payload)
+                status_code = response.status_code
+                json = response.json
+                if status_code == 200:
+                    module.exit_json(changed=True, data=json, status_code=status_code)
+                else:
+                    module.fail_json(msg='Error updating ssh key name [{}: {}]'.format(
+                        status_code, response.json['message']), fingerprint=fingerprint)
             else:
-                module.fail_json(msg='Error creating ssh key [{}: {}]'.format(
-                    status_code, response.json['message']))
+                module.fail_json(msg='Error getting ssh key [{}: {}]'.format(
+                    status_code, response.json['message']), fingerprint=fingerprint)
         else:
             module.fail_json(msg='Error creating ssh key [{}: {}]'.format(
                 status_code, response.json['message']))
@@ -199,7 +211,7 @@ def core(module):
 
 
 def ssh_key_fingerprint(ssh_pub_key):
-    key = public_key.split(None, 2)[1]
+    key = ssh_pub_key.split(None, 2)[1]
     fingerprint = hashlib.md5(base64.decodestring(key)).hexdigest()
     return ':'.join(a+b for a,b in zip(fingerprint[::2], fingerprint[1::2]))
 
