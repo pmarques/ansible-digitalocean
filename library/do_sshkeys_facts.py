@@ -166,10 +166,7 @@ def main():
         ),
     )
 
-    try:
-        core(module)
-    except Exception as e:
-        module.fail_json(msg=str(e))
+    core(module)
 
 if __name__ == '__main__':
     main()
