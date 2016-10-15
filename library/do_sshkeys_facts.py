@@ -26,14 +26,9 @@ description:
 version_added: "2.3"
 author: "Patrick Marques (@pmarques)"
 options:
-  state:
-    description:
-     - Indicate desired state of the target.
-    default: present
-    choices: ['present', 'absent']
   oauth_token:
     description:
-     - DigitalOcean OAuth token.
+     - DigitalOcean API token.
     required: true
 
 notes:
