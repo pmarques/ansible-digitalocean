@@ -43,7 +43,10 @@ options:
     default: None
   droplet_id:
     description:
-     - The Droplet that the Floating IP has been assigned to.
+     - The Droplet that the Floating IP should be assigned to. If a list of Droplet
+       IDs (separated by commas ',') is given, it will check if the Floating IP is
+       assigned to any Droplet in the list and if not assigns the Floating IP to
+       the first Droplet in the list.
     required: false
     default: None
   oauth_token:
@@ -216,6 +219,9 @@ def core(module):
         if module.params['droplet_id'] is not None and module.params['ip'] is not None:
             # Lets try to associate the ip to the specified droplet
             result = associate_floating_ips(module, rest)
+        elif module.params['droplet_id'] is not None:
+            # Lets try to associate the ip to the specified droplet
+            result = assert_floating_ips(module, rest)
         else:
             result = create_floating_ips(module, rest)
 
@@ -244,6 +250,31 @@ def get_floating_ip_details(module, rest):
             status_code, response.json['message']), region=module.params['region'])
 
 
+def get_all_floating_ips(module, rest):
+    # TODO: recursive fetch!
+    response = rest.get('floating_ips?page=1&per_page=20')
+    status_code = response.status_code
+    json = response.json
+    if status_code != 200:
+        module.fail_json(msg='Error fecthing facts [{}: {}]'.format(
+            status_code, response.json['message']))
+
+    return json
+
+def assert_floating_ips(module, rest):
+    floating_ips = get_all_floating_ips(module, rest)
+
+    droplet_ids = [ int(did) for did in module.params['droplet_id'] ]
+    # module.exit_json(changed=False, droplet_ids=droplet_ids)
+
+    for fip in floating_ips['floating_ips']:
+        # module.exit_json(changed=False, id=fip['droplet']['id'])
+        if fip['droplet']['id'] in droplet_ids:
+            module.exit_json(changed=False, data=fip)
+
+    create_floating_ips(module, rest)
+
+
 def assign_floating_id_to_droplet(module, rest):
     ip = module.params['ip']
 
@@ -268,7 +299,7 @@ def associate_floating_ips(module, rest):
     droplet = floating_ip['droplet']
 
     # TODO: If already assigned to a droplet verify if is one of the specified as valid
-    if droplet is not None and str(droplet['id']) in [module.params['droplet_id']]:
+    if droplet is not None and str(droplet['id']) in module.params['droplet_id']:
         module.exit_json(changed=False)
     else:
         assign_floating_id_to_droplet(module, rest)
@@ -280,7 +311,7 @@ def create_floating_ips(module, rest):
     if module.params['region'] is not None:
         payload['region'] = module.params['region']
     if module.params['droplet_id'] is not None:
-        payload['droplet_id'] = module.params['droplet_id']
+        payload['droplet_id'] = module.params['droplet_id'][0]
 
     response = rest.post('floating_ips', data=payload)
     status_code = response.status_code
@@ -316,6 +347,10 @@ def main():
             ['region', 'droplet_id']
         ),
     )
+
+    # Parse droplet_id(s) into a list
+    if module.params['droplet_id'] is not None:
+        module.params['droplet_id'] = module.params['droplet_id'].split(',')
 
     core(module)
 
