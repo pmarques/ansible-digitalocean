@@ -208,33 +208,20 @@ def wait_action(module, rest, ip, action_id, timeout=10):
 def core(module):
     api_token = module.params['oauth_token']
     state = module.params['state']
-    ip = module.params['ip']
-    droplet_id = module.params['droplet_id']
-    region = module.params['region']
 
     rest = Rest(module, {'Authorization': 'Bearer {}'.format(api_token),
                          'Content-type': 'application/json'})
 
     if state in ('present'):
+        # if a Droplet ID and a Floating ID are passed to module, we only need to
+        # associate them, is not possible to create and specify Floating ID / IP
         if module.params['droplet_id'] is not None and module.params['ip'] is not None:
-            # Lets try to associate the ip to the specified droplet
-            result = associate_floating_ips(module, rest)
-        elif module.params['droplet_id'] is not None:
-            # Lets try to associate the ip to the specified droplet
-            result = assert_floating_ips(module, rest)
+            assign_floating_id_to_droplet(module, rest)
         else:
-            result = create_floating_ips(module, rest)
+            create_floating_ips(module, rest)
 
     elif state in ('absent'):
-        response = rest.delete('floating_ips/{}'.format(ip))
-        status_code = response.status_code
-        json = response.json
-        if status_code == 204:
-            module.exit_json(changed=True)
-        elif status_code == 404:
-            module.exit_json(changed=False)
-        else:
-            module.exit_json(changed=False, data=json)
+        delete_floating_ips(module, rest)
 
 
 def get_floating_ip_details(module, rest):
@@ -244,10 +231,10 @@ def get_floating_ip_details(module, rest):
     status_code = response.status_code
     json = response.json
     if status_code == 200:
-        return response.json['floating_ip']
+        return response.json
     else:
-        module.fail_json(msg='Error assigning floating ip [{}: {}]'.format(
-            status_code, response.json['message']), region=module.params['region'])
+        module.fail_json(msg='Error geting floating ip [{}] details [{}: {}]'.format(
+            ip, status_code, response.json['message']), region=module.params['region'])
 
 
 def get_all_floating_ips(module, rest):
@@ -259,28 +246,74 @@ def get_all_floating_ips(module, rest):
         module.fail_json(msg='Error fecthing facts [{}: {}]'.format(
             status_code, response.json['message']))
 
-    return json
+    return json['floating_ips']
 
-def assert_floating_ips(module, rest):
+def assert_floating_ips_to_droplet_ids(module, rest):
     floating_ips = get_all_floating_ips(module, rest)
 
-    droplet_ids = [ int(did) for did in module.params['droplet_id'] ]
-    # module.exit_json(changed=False, droplet_ids=droplet_ids)
 
-    for fip in floating_ips['floating_ips']:
-        # module.exit_json(changed=False, id=fip['droplet']['id'])
-        if fip['droplet']['id'] in droplet_ids:
+    for fip in floating_ips:
+        if fip['droplet']['id'] in module.params['droplet_id']:
+            return fip
+
+    return None
+
+
+def create_floating_ips(module, rest):
+    """
+    Create a Floating IP in a region or associated to one of the Droplet IDs.
+    """
+
+    payload = {
+    }
+
+    if module.params['region'] is not None:
+        payload['region'] = module.params['region']
+    if module.params['droplet_id'] is not None:
+        # If there is already on Floating IP associated to one of the Droplet IDs
+        # our job is done
+        fip = assert_floating_ips_to_droplet_ids(module, rest)
+        if fip is not None:
             module.exit_json(changed=False, data=fip)
 
-    create_floating_ips(module, rest)
+        payload['droplet_id'] = module.params['droplet_id'][0]
+
+    response = rest.post('floating_ips', data=payload)
+    status_code = response.status_code
+    json = response.json
+    if status_code == 202:
+        module.exit_json(changed=True, data=json)
+    else:
+        module.fail_json(msg='Error creating floating ip [{}: {}]'.format(
+            status_code, response.json['message']), region=module.params['region'])
+
+
+def delete_floating_ips(module, rest):
+    ip = module.params['ip']
+
+    response = rest.delete('floating_ips/{}'.format(ip))
+    status_code = response.status_code
+    json = response.json
+    if status_code == 204:
+        module.exit_json(changed=True)
+    elif status_code == 404:
+        module.exit_json(changed=False)
+    else:
+        module.exit_json(changed=False, data=json)
 
 
 def assign_floating_id_to_droplet(module, rest):
+    floating_ip = get_floating_ip_details(module, rest)
+    droplet = floating_ip['floating_ip']['droplet']
+
+    if droplet is not None and str(droplet['id']) in module.params['droplet_id']:
+        module.exit_json(changed=False, data=floating_ip)
+
     ip = module.params['ip']
 
     payload = {
         'type': 'assign',
-        'droplet_id': module.params['droplet_id'],
+        'droplet_id': module.params['droplet_id'][0],
     }
 
     response = rest.post('floating_ips/{}/actions'.format(ip), data=payload)
@@ -289,35 +322,7 @@ def assign_floating_id_to_droplet(module, rest):
     if status_code == 201:
         wait_action(module, rest, ip,  json['action']['id'])
 
-        module.exit_json(changed=True, data=json['action']['id'])
-    else:
-        module.fail_json(msg='Error creating floating ip [{}: {}]'.format(
-            status_code, response.json['message']), region=module.params['region'])
-
-def associate_floating_ips(module, rest):
-    floating_ip = get_floating_ip_details(module, rest)
-    droplet = floating_ip['droplet']
-
-    # TODO: If already assigned to a droplet verify if is one of the specified as valid
-    if droplet is not None and str(droplet['id']) in module.params['droplet_id']:
-        module.exit_json(changed=False)
-    else:
-        assign_floating_id_to_droplet(module, rest)
-
-def create_floating_ips(module, rest):
-    payload = {
-    }
-
-    if module.params['region'] is not None:
-        payload['region'] = module.params['region']
-    if module.params['droplet_id'] is not None:
-        payload['droplet_id'] = module.params['droplet_id'][0]
-
-    response = rest.post('floating_ips', data=payload)
-    status_code = response.status_code
-    json = response.json
-    if status_code == 202:
-        module.exit_json(changed=True, data=json)
+        module.exit_json(changed=True, data=floating_ip, action_id=json['action']['id'])
     else:
         module.fail_json(msg='Error creating floating ip [{}: {}]'.format(
             status_code, response.json['message']), region=module.params['region'])
@@ -333,7 +338,7 @@ def main():
             oauth_token = dict(
                 no_log=True,
                 # Support environment variable for DigitalOcean OAuth Token
-                fallback=(env_fallback, ['DO_OAUTH_TOKEN', 'DO_API_TOKEN', 'DO_API_KEY']),
+                fallback=(env_fallback, ['DO_OAUTH_TOKEN']),
                 required=True,
             ),
         ),
@@ -350,9 +355,12 @@ def main():
 
     # Parse droplet_id(s) into a list
     if module.params['droplet_id'] is not None:
-        module.params['droplet_id'] = module.params['droplet_id'].split(',')
+        module.params['droplet_id'] = [ int(did) for did in module.params['droplet_id'].split(',') ]
 
-    core(module)
+    try:
+        core(module)
+    except Exception as e:
+        module.fail_json(msg=str(e))
 
 if __name__ == '__main__':
     main()
