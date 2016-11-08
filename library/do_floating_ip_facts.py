@@ -97,6 +97,10 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url
 
 
+class RestException(Exception):
+    pass
+
+
 class Response(object):
 
     def __init__(self, resp, info):
@@ -139,7 +143,12 @@ class Rest(object):
 
         resp, info = fetch_url(self.module, url, data=data, headers=self.headers, method=method)
 
-        return Response(resp, info)
+        response = Response(resp, info)
+
+        if response.status_code >= 500:
+            raise RestException('Unable to reach api.digitalocean.com')
+        else:
+            return response
 
     def get(self, path, data=None, headers=None):
         return self.send('GET', path, data, headers)
@@ -183,7 +192,11 @@ def main():
         ),
     )
 
-    core(module)
+    try:
+        core(module)
+    except Exception as e:
+        e = get_exception()
+        module.fail_json(msg=e.message)
 
 if __name__ == '__main__':
     main()
