@@ -96,6 +96,11 @@ import base64
 from ansible.module_utils.basic import env_fallback
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url
+from ansible.module_utils.pycompat24 import get_exception
+
+
+class RestException(Exception):
+    pass
 
 
 class Response(object):
@@ -108,13 +113,11 @@ class Response(object):
 
     @property
     def json(self):
-        if not self.body:
-            if "body" in self.info:
-                return json.loads(self.info["body"])
-            return None
-        try:
+        if self.body:
             return json.loads(self.body)
-        except ValueError:
+        elif "body" in self.info:
+            return json.loads(self.info["body"])
+        else:
             return None
 
     @property
@@ -140,7 +143,12 @@ class Rest(object):
 
         resp, info = fetch_url(self.module, url, data=data, headers=self.headers, method=method)
 
-        return Response(resp, info)
+        response = Response(resp, info)
+
+        if response.status_code >= 500:
+            raise RestException(response.info['msg'])
+        else:
+            return response
 
     def get(self, path, data=None, headers=None):
         return self.send('GET', path, data, headers)
@@ -246,7 +254,7 @@ def main():
             oauth_token = dict(
                 no_log=True,
                 # Support environment variable for DigitalOcean OAuth Token
-                fallback=(env_fallback, ['DO_OAUTH_TOKEN', 'DO_API_TOKEN', 'DO_API_KEY']),
+                fallback=(env_fallback, ['DO_API_TOKEN', 'DO_API_KEY']),
                 required=True,
             ),
         ),
@@ -264,7 +272,11 @@ def main():
         supports_check_mode=True,
     )
 
-    core(module)
+    try:
+        core(module)
+    except Exception:
+        e = get_exception()
+        module.fail_json(msg=e.message)
 
 if __name__ == '__main__':
     main()
