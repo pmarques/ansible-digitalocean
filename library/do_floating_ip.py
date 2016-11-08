@@ -129,6 +129,7 @@ import time
 from ansible.module_utils.basic import env_fallback
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import fetch_url
+from ansible.module_utils.pycompat24 import get_exception
 
 
 class RestException(Exception):
@@ -145,13 +146,11 @@ class Response(object):
 
     @property
     def json(self):
-        if not self.body:
-            if "body" in self.info:
-                return json.loads(self.info["body"])
-            return None
-        try:
+        if self.body:
             return json.loads(self.body)
-        except ValueError:
+        elif "body" in self.info:
+            return json.loads(self.info["body"])
+        else:
             return None
 
     @property
@@ -180,7 +179,7 @@ class Rest(object):
         response = Response(resp, info)
 
         if response.status_code >= 500:
-            raise RestException('Unable to reach api.digitalocean.com')
+            raise RestException(response.info['msg'])
         else:
             return response
 
@@ -347,7 +346,7 @@ def main():
             oauth_token = dict(
                 no_log=True,
                 # Support environment variable for DigitalOcean OAuth Token
-                fallback=(env_fallback, ['DO_OAUTH_TOKEN']),
+                fallback=(env_fallback, ['DO_API_TOKEN', 'DO_API_KEY']),
                 required=True,
             ),
         ),
